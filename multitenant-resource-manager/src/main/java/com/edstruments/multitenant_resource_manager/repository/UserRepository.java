@@ -2,6 +2,7 @@ package com.edstruments.multitenant_resource_manager.repository;
 
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -40,4 +41,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // Find all non-deleted users with pagination
     @Query("SELECT u FROM User u WHERE u.tenant.id = :tenantId AND u.isDeleted = false")
     List<User> findAllByTenantIdWithPagination(@Param("tenantId") Long tenantId, org.springframework.data.domain.Pageable pageable);
+    
+//    
+//    @Query("SELECT u FROM User u WHERE u.tenant.id = :tenantId AND u.isDeleted = false")
+//    List<User> findByTenantIdAndIsDeletedFalse(@Param("tenantId") Long tenantId);
+//
+//    @Query("SELECT u FROM User u WHERE u.id = :id AND u.tenant.id = :tenantId AND u.isDeleted = false")
+//    Optional<User> findByIdAndTenantId(@Param("id") Long id, @Param("tenantId") Long tenantId);
+    
+    @Modifying
+    @Query("UPDATE User u SET u.isDeleted = true WHERE u.tenant.id = :tenantId")
+    void softDeleteAllByTenantId(@Param("tenantId") Long tenantId);
 }

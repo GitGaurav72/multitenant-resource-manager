@@ -1,0 +1,113 @@
+package com.edstruments.multitenant_resource_manager.service;
+
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class DatabaseSchemaService {
+
+    private final JdbcTemplate jdbcTemplate;
+
+    public DatabaseSchemaService(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+//    @Transactional
+//    public void createSchema(String schemaName) {
+//        // Create the schema
+//        jdbcTemplate.execute("CREATE SCHEMA IF NOT EXISTS " + schemaName);
+//
+//        // Create tables in the new schema
+//        createUserTable(schemaName);
+//        createResourceTable(schemaName);
+//        createAuditLogTable(schemaName);
+//    }
+    
+    @Transactional
+    public void createSchema(String schemaName, String password) {
+        try {
+            // Create User (Schema)
+            jdbcTemplate.execute("CREATE USER " + schemaName + " IDENTIFIED BY " + password);
+            
+            // Grant minimum privileges
+            jdbcTemplate.execute("GRANT CONNECT, RESOURCE TO " + schemaName);
+            
+            // Optionally grant quota for tablespace
+            jdbcTemplate.execute("ALTER USER " + schemaName + " QUOTA UNLIMITED ON USERS");
+            
+        } catch (Exception e) {
+            if (e.getMessage().contains("ORA-01920")) {
+                // ORA-01920: user name conflicts with another existing user
+                System.out.println("Schema already exists: " + schemaName);
+            } else {
+                throw e;
+            }
+        }
+
+        // Create tables in the new schema
+        createUserTable(schemaName);
+        createResourceTable(schemaName);
+        createAuditLogTable(schemaName);
+    }
+
+
+    private void createUserTable(String schemaName) {
+        String sql = String.format("""
+            CREATE TABLE IF NOT EXISTS %s.users (
+                id NUMBER(0,38) PRIMARY KEY,
+                username VARCHAR(255) NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                role VARCHAR(50) NOT NULL,
+                tenant_id NUMBER(0,38) NOT NULL,
+                is_deleted BOOLEAN NOT NULL DEFAULT false,
+                UNIQUE (username, tenant_id)
+            )
+            """, schemaName);
+        jdbcTemplate.execute(sql);
+    }
+
+    private void createResourceTable(String schemaName) {
+        String sql = String.format("""
+            CREATE TABLE IF NOT EXISTS %s.resources (
+                id NUMBER(0,38) PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                description TEXT,
+                owner_id BIGINT NOT NULL,
+                tenant_id NUMBER(0,38) NOT NULL,
+                is_deleted BOOLEAN NOT NULL DEFAULT false,
+                FOREIGN KEY (owner_id) REFERENCES %s.users(id)
+            )
+            """, schemaName, schemaName);
+        jdbcTemplate.execute(sql);
+    }
+
+    private void createAuditLogTable(String schemaName) {
+        String sql = String.format("""
+            CREATE TABLE IF NOT EXISTS %s.audit_logs (
+                id NUMBER(0,38) PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                action VARCHAR(255) NOT NULL,
+                timestamp TIMESTAMP NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES %s.users(id)
+            )
+            """, schemaName, schemaName);
+        jdbcTemplate.execute(sql);
+    }
+
+    @Transactional
+    public void dropSchema(String schemaName) {
+        // Drop the schema (use with caution - this deletes all data)
+        jdbcTemplate.execute("DROP SCHEMA IF EXISTS " + schemaName + " CASCADE");
+    }
+
+    public boolean schemaExists(String schemaName) {
+        String sql = """
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.schemata 
+                WHERE schema_name = ?
+            )
+            """;
+        return Boolean.TRUE.equals(jdbcTemplate.queryForObject(sql, Boolean.class, schemaName));
+    }
+}

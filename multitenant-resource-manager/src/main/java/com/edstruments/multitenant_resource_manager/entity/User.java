@@ -34,7 +34,7 @@ public class User {
     private boolean isDeleted = false;
 
     public enum Role {
-        ADMIN, MANAGER, EMPLOYEE
+        ADMIN, MANAGER, EMPLOYEE, SUPER_ADMIN
     }
 
 	public Long getId() {

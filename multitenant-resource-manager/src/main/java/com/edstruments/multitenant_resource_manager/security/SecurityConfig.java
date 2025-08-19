@@ -84,6 +84,7 @@ package com.edstruments.multitenant_resource_manager.security;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -149,15 +150,16 @@ public class SecurityConfig {
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(
-                    "/",
-                    "/favicon.ico",
-                    "/error",
-                    "/static/**",
-                    "/api/auth/**"
-                ).permitAll()
-                .requestMatchers("/api/tenants/**").hasRole("SUPER_ADMIN")
-                .anyRequest().authenticated()
+            	    .requestMatchers("/api/auth/**").permitAll()
+            	    .requestMatchers("/api/tenants/**").hasRole("SUPER_ADMIN")
+            	    .requestMatchers("/api/users/**").hasRole("ADMIN")
+            	    .requestMatchers("/api/audit-logs/**").hasRole("ADMIN")
+            	    .requestMatchers(HttpMethod.POST, "/api/resources/**").hasAnyRole("ADMIN", "MANAGER")
+            	    .requestMatchers(HttpMethod.PUT, "/api/resources/**").hasAnyRole("ADMIN", "MANAGER")
+            	    .requestMatchers(HttpMethod.DELETE, "/api/resources/**").hasAnyRole("ADMIN", "MANAGER")
+            	    .requestMatchers(HttpMethod.GET, "/api/resources/**").hasAnyRole("ADMIN", "MANAGER", "EMPLOYEE")
+            	    .anyRequest().authenticated()
+            	
             );
 
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

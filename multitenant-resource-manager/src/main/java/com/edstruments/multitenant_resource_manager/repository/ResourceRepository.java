@@ -4,6 +4,7 @@ package com.edstruments.multitenant_resource_manager.repository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -47,4 +48,8 @@ public interface ResourceRepository extends JpaRepository<Resource, Long> {
     // Find resource by ID within a specific tenant
     @Query("SELECT r FROM Resource r WHERE r.id = :id AND r.tenant.id = :tenantId AND r.isDeleted = false")
     Optional<Resource> findByIdAndTenantId(@Param("id") Long id, @Param("tenantId") Long tenantId);
+    
+    @Modifying
+    @Query("UPDATE Resource r SET r.isDeleted = true WHERE r.tenant.id = :tenantId")
+    void softDeleteAllByTenantId(@Param("tenantId") Long tenantId);
 }
