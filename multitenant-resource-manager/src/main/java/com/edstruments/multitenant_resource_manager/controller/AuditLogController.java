@@ -20,18 +20,19 @@ public class AuditLogController {
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Page<AuditLog>> getAuditLogs(Pageable pageable) {
-        Page<AuditLog> auditLogs = auditLogService.getAuditLogs(pageable);
+    public ResponseEntity<Page<AuditLog>> getAuditLogs( @RequestHeader("X-TenantID") String tenantId,Pageable pageable) {
+        Page<AuditLog> auditLogs = auditLogService.getAuditLogs( pageable);
         return ResponseEntity.ok(auditLogs);
     }
 
     @GetMapping("/search")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Page<AuditLog>> searchAuditLogs(
-            @RequestParam(required = false) String action,
-            @RequestParam(required = false) Long userId,
+    		 @RequestHeader("X-TenantID") String tenantId,
+             @RequestParam(required = false) String action,
+             @RequestParam(required = false) Long userId,
             Pageable pageable) {
-        Page<AuditLog> auditLogs = auditLogService.searchAuditLogs(action, userId, pageable);
+        Page<AuditLog> auditLogs = auditLogService.searchAuditLogs( action, userId, pageable);
         return ResponseEntity.ok(auditLogs);
     }
 }

@@ -46,52 +46,58 @@ public class DatabaseSchemaService {
         }
 
         // Create tables in the new schema
-        createUserTable(schemaName);
+        Integer count = jdbcTemplate.queryForObject(
+        	    "SELECT COUNT(*) FROM all_tables WHERE owner = ? AND table_name = ?",
+        	    Integer.class,
+        	    schemaName.toUpperCase(),
+        	    "USERS"
+        	);
+
+        	if (count == 0) {
+        	    createUserTable(schemaName);
+        	}
         createResourceTable(schemaName);
         createAuditLogTable(schemaName);
     }
 
 
     private void createUserTable(String schemaName) {
-        String sql = String.format("""
-            CREATE TABLE IF NOT EXISTS %s.users (
-                id NUMBER(0,38) PRIMARY KEY,
-                username VARCHAR(255) NOT NULL,
-                password VARCHAR(255) NOT NULL,
-                role VARCHAR(50) NOT NULL,
-                tenant_id NUMBER(0,38) NOT NULL,
-                is_deleted BOOLEAN NOT NULL DEFAULT false,
-                UNIQUE (username, tenant_id)
-            )
-            """, schemaName);
-        jdbcTemplate.execute(sql);
+        jdbcTemplate.execute("CREATE TABLE " + schemaName + ".users (" +
+                "id NUMBER(19,0) PRIMARY KEY, " +
+                "username VARCHAR2(255) NOT NULL, " +
+                "password VARCHAR2(255) NOT NULL, " +
+                "role VARCHAR2(50) NOT NULL, " +
+                "tenant_id NUMBER(19,0) NOT NULL, " +
+                "is_deleted NUMBER(1) DEFAULT 0 NOT NULL, " +
+                "CONSTRAINT uq_" + schemaName + "_username_tenant UNIQUE (username, tenant_id))");
     }
+
 
     private void createResourceTable(String schemaName) {
         String sql = String.format("""
-            CREATE TABLE IF NOT EXISTS %s.resources (
-                id NUMBER(0,38) PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
-                description TEXT,
-                owner_id BIGINT NOT NULL,
-                tenant_id NUMBER(0,38) NOT NULL,
-                is_deleted BOOLEAN NOT NULL DEFAULT false,
-                FOREIGN KEY (owner_id) REFERENCES %s.users(id)
+            CREATE TABLE %s.resources (
+                id NUMBER(19,0) PRIMARY KEY,
+                name VARCHAR2(255) NOT NULL,
+                description VARCHAR2(255),
+                owner_id NUMBER(19,0) NOT NULL,
+                tenant_id NUMBER(19,0) NOT NULL,
+                is_deleted NUMBER(1) DEFAULT 0 NOT NULL,
+                CONSTRAINT fk_%s_resources_owner FOREIGN KEY (owner_id) REFERENCES %s.users(id)
             )
-            """, schemaName, schemaName);
+            """, schemaName, schemaName.toLowerCase(), schemaName);
         jdbcTemplate.execute(sql);
     }
 
     private void createAuditLogTable(String schemaName) {
         String sql = String.format("""
-            CREATE TABLE IF NOT EXISTS %s.audit_logs (
-                id NUMBER(0,38) PRIMARY KEY,
-                user_id BIGINT NOT NULL,
-                action VARCHAR(255) NOT NULL,
-                timestamp TIMESTAMP NOT NULL,
-                FOREIGN KEY (user_id) REFERENCES %s.users(id)
+            CREATE TABLE %s.audit_logs (
+                id NUMBER(19,0) PRIMARY KEY,
+                user_id NUMBER(19,0) NOT NULL,
+                action VARCHAR2(255) NOT NULL,
+                event_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                CONSTRAINT fk_%s_auditlogs_user FOREIGN KEY (user_id) REFERENCES %s.users(id)
             )
-            """, schemaName, schemaName);
+            """, schemaName, schemaName.toLowerCase(), schemaName);
         jdbcTemplate.execute(sql);
     }
 
